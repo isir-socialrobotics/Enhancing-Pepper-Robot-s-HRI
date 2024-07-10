@@ -4,4 +4,4 @@ Enhancing Pepper Robot’s Human-Robot Interaction Capabilities through Advanced
 
 You can find the detailed documentation in the following file:
 
-- [PDF Document](./Enhancing Pepper Robot’s HRI.pdf)
+- [PDF Document](https://github.com/polmagri/Enhancing-Pepper-Robot-s-HRI/blob/main/Enhancing%20Pepper%20Robot%E2%80%99s%20HRI.pdf)
