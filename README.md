@@ -15,7 +15,7 @@ This repository contains two folders:
 
 2. **Dataset**:
    
-   -[Link drive to dataset] ( https://drive.google.com/drive/folders/1_3JckYWL6bLGh8cu_JtG2LzMEAdoCGat?usp=sharing )
+   -[Link drive to dataset](https://drive.google.com/drive/folders/1_3JckYWL6bLGh8cu_JtG2LzMEAdoCGat?usp=sharing)
    
     Composed of 5 different subjects performing a total of 8 trials using a motion capture system with 8 cameras in a closed environment with standard lighting. The dataset simulates various types of human movements, capturing different distances, orientations, heights, and poses. Each trial lasts approximately 2 minutes with a single person in the room.
     The various scenes were also recorded simultaneously with a RealSense camera, positioned statically at a height of 1.25 meters to obtain the same view as when Pepper is in an upright position.
