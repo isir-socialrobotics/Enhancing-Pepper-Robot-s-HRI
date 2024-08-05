@@ -31,4 +31,4 @@ The analyzed scenes include:
 
 You can find the detailed documentation in the following file:
 
-- [PDF Document](https://github.com/polmagri/Enhancing-Pepper-Robot-s-HRI/blob/main/Enhancing%20Pepper%20Robot%E2%80%99s%20HRI.pdf)
+- [PDF Document](https://github.com/polmagri/Enhancing-Pepper-Robot-s-HRI/blob/main/Enhancing_Pepper_Robot_s_HRI.pdf)
