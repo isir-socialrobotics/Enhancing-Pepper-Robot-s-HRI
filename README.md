@@ -31,8 +31,8 @@ The analyzed scenes include:
 3. The **FOV_dataset** code written in Python is used to test the algorithm on the dataset. It returns a green arrow to indicate torso orientation, a red arrow with a 120-degree arc for gaze orientation, and a warning message "turned man + ID bounding box" to signal when the robot is outside the human's field of view.
 Due to the loss of quality in the depth images during the dataset saving process, techniques have been implemented to distinguish the background from the foreground:
 
-A double-window filter around the keypoints to select the minimum depth value, which includes the exclusion of depth values greater than 4 meters.
-A RealSense filter to fill in the depth gaps.
+A double-window filter around the keypoints to select the minimum depth value and a threshold for the exclusion of depth values greater than 4 meters.
+
 
 4. The **FOV_realsense** Python code is the version of the code to be used directly with the connected Realsense camera. It utilizes the Realsense functions to obtain intrinsic parameters, applies a single-window technique to improve depth quality, and has no limitations on depth. Like the previous algorithm, it uses a Kalman filter for both gaze and body position in more critical situations (e.g., when the person is in profile relative to the camera, specifically at azimuth angles of 90 and 270 degrees ± 20 degrees) to correct errors due to the misalignment of the keypoints for the back and gaze
 
