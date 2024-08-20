@@ -74,11 +74,11 @@ def euler_from_vectors(v_from, v_to):
     return euler_angles
 
 def calculate_azimuth(arrow_direction, pelvis_position):
-    camera_to_pelvis = pelvis_position[:2]  # Prendiamo solo la componente XY
-    torso_direction_xy = arrow_direction[:2]  # Proiezione sul piano XY
+    camera_to_pelvis = pelvis_position[:2]  # We only take the XY component
+    torso_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
     azimuth = np.degrees(np.arctan2(torso_direction_xy[1], torso_direction_xy[0]) - np.arctan2(camera_to_pelvis[1], camera_to_pelvis[0]))
 
-    # Normalizza l'angolo tra 0 e 360 gradi
+    # Normalize the angle between 0 and 360 degrees
     azimuth = azimuth % 360
     if azimuth < 0:
         azimuth += 360
@@ -86,11 +86,11 @@ def calculate_azimuth(arrow_direction, pelvis_position):
     return azimuth
 
 def calculate_azimuth_gaze(arrow_direction, neck_position):
-    camera_to_neck = neck_position[:2]  # Consideriamo solo la componente XY
-    gaze_direction_xy = arrow_direction[:2]  # Proiezione sul piano XY
+    camera_to_neck = neck_position[:2]  # We only consider the XY component
+    gaze_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
     azimuth_gaze = np.degrees(np.arctan2(gaze_direction_xy[1], gaze_direction_xy[0]) - np.arctan2(camera_to_neck[1], camera_to_neck[0]))
 
-    # Normalizza l'angolo tra 0 e 360 gradi
+    # Normalize the angle between 0 and 360 degrees
     azimuth_gaze = azimuth_gaze % 360
     if azimuth_gaze < 0:
         azimuth_gaze += 360
@@ -218,7 +218,7 @@ circle_plots = []
 april_tag_scatter = None
 turned_man_text_plots = []  # To store the "Turned Man" text
 
-# Variabili per memorizzare gli angoli azimutali
+# Variables to store the azimuthal angles
 azimuth_text = None
 gaze_azimuth_text = None
 
@@ -277,8 +277,8 @@ def detect_apriltag(color_image, depth_image):
 bag_file = '/home/paolo/dataset/sub5/sub5_1/mocap_data.bag'
 rgb_images, depth_images = extract_and_process_rosbag(bag_file)
 
-# Aggiungi un contatore per gli ID unici delle persone
-person_id_counter = itertools.count(1)  # Inizia da 1 e incrementa per ogni persona
+# Add a counter for unique person IDs
+person_id_counter = itertools.count(1)  # Starts from 1 and increments for each person
 
 try:
     for color_image, depth_image in zip(rgb_images, depth_images):
@@ -333,13 +333,13 @@ try:
                     keypoints_2d = {}
                     keypoints_3d = []
 
-                    # Estrazione del bounding box per ogni persona
-                    bbox = result.boxes.xyxy.cpu().numpy()[0]  # xyxy rappresenta il bounding box
+                    # Extraction of bounding box for each person
+                    bbox = result.boxes.xyxy.cpu().numpy()[0]  # xyxy represents the bounding box
 
-                    # Assegna un ID univoco alla persona
+                    # Assign a unique ID to the person
                     person_id = next(person_id_counter)
 
-                    # Disegna il bounding box e l'ID sul frame RGB
+                    # Draw the bounding box and ID on the RGB frame
                     cv2.rectangle(color_image, (int(bbox[0]), int(bbox[1])), (int(bbox[2]), int(bbox[3])), (0, 255, 0), 2)
                     cv2.putText(color_image, f"Person ID: {person_id}", (int(bbox[0]), int(bbox[1]) - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
@@ -400,7 +400,7 @@ try:
                             'keypoints_3d': keypoints_3d
                         })
 
-        # Processa ogni persona rilevata individualmente
+        # Process each detected person individually
         for person in all_keypoints_3d:
             person_id = person['id']
             bbox = person['bbox']
@@ -430,19 +430,19 @@ try:
                 p1 = np.array(shoulder_l[1:])
                 p2 = np.array(shoulder_r[1:])
                 p3 = np.array(pelvis[1:])
-                p4 = p3  # La freccia parte dal punto Pelvis
+                p4 = p3  # The arrow starts from the Pelvis point
                 p5 = np.array(neck[1:])
 
                 arrow_pelvis_start, arrow_pelvis_end, normal_torso = calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length=3)
 
                 azimuth = calculate_azimuth(normal_torso, pelvis[1:])
                 
-                # Aggiungi l'azimut al buffer
+                # Add the azimuth to the buffer
                 azimuth_buffer.append(azimuth)
                 if len(azimuth_buffer) > 5:
                     azimuth_buffer.pop(0)
 
-                # Verifica se l'azimut è vicino ai 90 o 270 gradi
+                # Check if the azimuth is close to 90 or 270 degrees
                 if should_use_kalman(azimuth):
                     for previous_azimuth in azimuth_buffer:
                         kf_position.update(previous_azimuth)
@@ -478,7 +478,7 @@ try:
                 p1 = np.array(eye_l[1:])
                 p2 = np.array(eye_r[1:])
                 p3 = np.array(neck[1:])
-                p4 = p3  # La freccia parte dal punto Neck
+                p4 = p3  # The arrow starts from the Neck point
                 p5 = np.array(neck[1:])
 
                 arrow_neck_start, arrow_neck_end, normal_gaze = calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length=4)
@@ -517,7 +517,7 @@ try:
 
                 euler_gaze = euler_from_vectors([1, 0, 0], normal_gaze)
 
-            # Verifica se il corpo è girato e non è possibile rilevare entrambi gli occhi
+            # Check if the body is turned and it's not possible to detect both eyes
             if 'Shoulder.L' in [kp[0] for kp in keypoints_3d] and 'Shoulder.R' in [kp[0] for kp in keypoints_3d]:
                 shoulder_l_x = next(kp for kp in keypoints_3d if kp[0] == 'Shoulder.L')[1]
                 shoulder_r_x = next(kp for kp in keypoints_3d if kp[0] == 'Shoulder.R')[1]
