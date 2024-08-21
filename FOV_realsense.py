@@ -452,7 +452,7 @@ try:
                         (('Ear.L' in keypoints_2d and 'Ear.R' in keypoints_2d) and \
                         not ('Eye.L' in keypoints_2d and 'Eye.R' in keypoints_2d)):
 
-                        print(f"Turned Man ID: {person_id}")  # Aggiungi questa linea
+                        print(f"Turned Man ID: {person_id}") 
 
                         turned_man_text = ax.text2D(0.05, 0.85, f"Man Turned ID: {person_id}", transform=ax.transAxes, fontsize=8, color='blue')
                         turned_man_text_plots.append(turned_man_text)
