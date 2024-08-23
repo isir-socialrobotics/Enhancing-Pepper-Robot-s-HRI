@@ -90,7 +90,7 @@ def calculate_azimuth(arrow_direction, pelvis_position):
 
     return azimuth
 
-def calculate_azimuth_gaze(arrow_direction, neck_position):
+def calculate_azimuth_gaze(arrow_direction, neck_position) -> float:
     camera_to_neck = neck_position[:2]  # We only consider the XY component
     gaze_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
     azimuth_gaze = np.degrees(np.arctan2(gaze_direction_xy[1], gaze_direction_xy[0]) - np.arctan2(camera_to_neck[1], camera_to_neck[0]))
