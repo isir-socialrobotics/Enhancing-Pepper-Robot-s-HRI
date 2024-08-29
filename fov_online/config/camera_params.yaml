@@ -1,0 +1,7 @@
+camera:
+  width: 1280
+  height: 720
+  fps: 30
+  depth_format: z16
+  color_format: bgr8
+
