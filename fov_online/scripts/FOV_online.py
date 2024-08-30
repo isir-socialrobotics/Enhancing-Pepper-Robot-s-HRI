@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+import rospy
+from geometry_msgs.msg import PoseArray, Pose, Vector3
+from std_msgs.msg import String
 import cv2
 import numpy as np
 import pyrealsense2 as rs
@@ -12,6 +15,10 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from scipy.spatial.transform import Rotation as R
 
 def calculate_3d(x, y, depth_frame, intrinsics, w, h, window_size=10):
+    # Returns the 3D coordinates (x, y, z) of a point given 2D coordinates (x, y)
+    # using a depth frame and camera intrinsics. It also uses a window to find
+    # the minimum depth value around the given pixel to reduce noise.
+    
     if x == 0 and y == 0:
         return 0.0, 0.0, 0.0, 0.0
 
@@ -33,6 +40,7 @@ def calculate_3d(x, y, depth_frame, intrinsics, w, h, window_size=10):
     pixel = [x, y]
     depth = min_depth
 
+    # Convert 2D pixel coordinates to 3D point in camera space
     point = rs.rs2_deproject_pixel_to_point(intrinsics, pixel, depth)
 
     x_3d, z_3d, y_3d = point
@@ -40,6 +48,9 @@ def calculate_3d(x, y, depth_frame, intrinsics, w, h, window_size=10):
     return x_3d, y_3d, -z_3d, min_depth
 
 def calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length):
+    # Calculates the normal vector of a plane defined by points p1, p2, p3
+    # and an arrow direction from p4 in the plane of the normal vector
+
     v1 = np.subtract(p2, p1)
     v2 = np.subtract(p3, p1)
 
@@ -81,7 +92,9 @@ def calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length):
     return arrow_start, arrow_end, angleX_camera_body_degrees, orientation_degrees
 
 def calculate_azimuth(arrow_direction, pelvis_position):
-    camera_to_pelvis = pelvis_position[:2]  # We only take the XY component
+    # Calculates the azimuthal angle for the body direction
+
+    camera_to_pelvis = pelvis_position[:2]  # Only the XY component is considered
     torso_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
     azimuth = np.degrees(np.arctan2(torso_direction_xy[1], torso_direction_xy[0]) - np.arctan2(camera_to_pelvis[1], camera_to_pelvis[0]))
 
@@ -93,7 +106,9 @@ def calculate_azimuth(arrow_direction, pelvis_position):
     return azimuth
 
 def calculate_azimuth_gaze(arrow_direction, neck_position):
-    camera_to_neck = neck_position[:2]  # We only consider the XY component
+    # Calculates the azimuthal angle for the gaze direction
+
+    camera_to_neck = neck_position[:2]  # Only the XY component is considered
     gaze_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
     azimuth_gaze = np.degrees(np.arctan2(gaze_direction_xy[1], gaze_direction_xy[0]) - np.arctan2(camera_to_neck[1], camera_to_neck[0]))
 
@@ -105,12 +120,16 @@ def calculate_azimuth_gaze(arrow_direction, neck_position):
     return azimuth_gaze
 
 def should_use_kalman(azimuth):
+    # Determines if Kalman filter should be used based on azimuth angle
     return (70 <= azimuth <= 110) or (250 <= azimuth <= 290)
 
 def should_use_kalman_gaze(azimuth_gaze):
+    # Determines if Kalman filter should be used for gaze based on azimuth angle
     return (70 <= azimuth_gaze <= 110) or (250 <= azimuth_gaze <= 290)
 
 class KalmanFilter1D:
+    # A 1D Kalman filter implementation
+
     def __init__(self, initial_state, initial_uncertainty, process_variance, measurement_variance):
         self.state = initial_state
         self.uncertainty = initial_uncertainty
@@ -118,15 +137,18 @@ class KalmanFilter1D:
         self.measurement_variance = measurement_variance
 
     def predict(self):
-        self.state = self.state  # In 1D Kalman filter, the state doesn't change during prediction
+        # Prediction step: in 1D Kalman filter, state doesn't change
+        self.state = self.state  
         self.uncertainty += self.process_variance
 
     def update(self, measurement):
+        # Update step: adjust state based on new measurement
         kalman_gain = self.uncertainty / (self.uncertainty + self.measurement_variance)
         self.state += kalman_gain * (measurement - self.state)
         self.uncertainty = (1 - kalman_gain) * self.uncertainty
 
     def get_state(self):
+        # Returns the current state estimate
         return self.state
 
 # Initialize Kalman filters
@@ -181,7 +203,7 @@ index_to_label = {
 
 # Define keypoint connections for drawing lines
 keypoint_connections = [
-    (0, 1), (0, 2), (5 , 6), (11, 12), (2, 4), (1, 3), (5, 7),
+    (0, 1), (0, 2), (5, 6), (11, 12), (2, 4), (1, 3), (5, 7),
     (7, 9), (6, 8), (8, 10), (11, 13), (13, 15),
     (12, 14), (14, 16)
 ]
@@ -236,10 +258,11 @@ turned_man_text_plots = []  # To store the "Turned Man" text
 # Variables to store the azimuthal angles
 azimuth_text = None
 gaze_azimuth_text = None
+
 try:
     person_id_counter = 0  # Initialize a counter to assign IDs to detected persons
 
-    while True:
+    while not rospy.is_shutdown():
         # Acquire frames from the RealSense pipeline
         frames = pipeline.wait_for_frames()
 
@@ -311,168 +334,48 @@ try:
                             if not np.isnan(z_3d) and (x_3d != 0 or y_3d != 0 or z_3d != 0):
                                 keypoints_3d.append((label, x_3d, y_3d, z_3d))
 
-                    if 'Hip.L' in keypoints_2d and 'Hip.R' in keypoints_2d:
-                        hip_l = keypoints_2d['Hip.L']
-                        hip_r = keypoints_2d['Hip.R']
-                        if hip_l != (0, 0) and hip_r != (0, 0):
-                            pelvis_x = (hip_l[0] + hip_r[0]) // 2
-                            pelvis_y = (hip_l[1] + hip_r[1]) // 2
-                            keypoints_2d['Pelvis'] = (pelvis_x, pelvis_y)
+                    # Publish the 3D keypoints
+                    keypoints_poses = PoseArray()
+                    for label, x_3d, y_3d, z_3d in keypoints_3d:
+                        pose = Pose()
+                        pose.position.x = x_3d
+                        pose.position.y = y_3d
+                        pose.position.z = z_3d
+                        keypoints_poses.poses.append(pose)
 
-                            x_3d, y_3d, z_3d, min_depth = calculate_3d(pelvis_x, pelvis_y, aligned_depth_frame, color_intrinsics, depth_image.shape[1], depth_image.shape[0])
-                            print(f"Keypoint: Pelvis - 2D: ({pelvis_x}, {pelvis_y}), 3D: ({x_3d}, {y_3d}, {z_3d}), Min Depth: {min_depth}")
-                            if not np.isnan(z_3d) and (x_3d != 0 or y_3d != 0 or z_3d != 0):
-                                keypoints_3d.append(('Pelvis', x_3d, y_3d, z_3d))
+                    keypoints_pub.publish(keypoints_poses)
 
-                            cv2.circle(color_image, (pelvis_x, pelvis_y), 5, (0, 0, 255), -1)
-                            cv2.putText(color_image, 'Pelvis', (pelvis_x, pelvis_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                            cv2.putText(color_image, f"({pelvis_x}, {pelvis_y})", (pelvis_x + 10, pelvis_y + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+                    # Publish the body arrow vector
+                    arrow_body_vector = Vector3()
+                    arrow_body_vector.x = arrow_pelvis_end[0] - arrow_pelvis_start[0]
+                    arrow_body_vector.y = arrow_pelvis_end[1] - arrow_pelvis_start[1]
+                    arrow_body_vector.z = arrow_pelvis_end[2] - arrow_pelvis_start[2]
+                    arrow_body_pub.publish(arrow_body_vector)
 
-                    if 'Shoulder.L' in keypoints_2d and 'Shoulder.R' in keypoints_2d:
-                        shoulder_l = keypoints_2d['Shoulder.L']
-                        shoulder_r = keypoints_2d['Shoulder.R']
-                        if shoulder_l != (0, 0) and shoulder_r != (0, 0):
-                            neck_x = (shoulder_l[0] + shoulder_r[0]) // 2
-                            neck_y = (shoulder_l[1] + shoulder_r[1]) // 2
-                            keypoints_2d['Neck'] = (neck_x, neck_y)
+                    # Publish the gaze arrow vector
+                    arrow_gaze_vector = Vector3()
+                    arrow_gaze_vector.x = arrow_neck_end[0] - arrow_neck_start[0]
+                    arrow_gaze_vector.y = arrow_neck_end[1] - arrow_neck_start[1]
+                    arrow_gaze_vector.z = arrow_neck_end[2] - arrow_neck_start[2]
+                    arrow_gaze_pub.publish(arrow_gaze_vector)
 
-                            x_3d, y_3d, z_3d, min_depth = calculate_3d(neck_x, neck_y, aligned_depth_frame, color_intrinsics, depth_image.shape[1], depth_image.shape[0])
-                            print(f"Keypoint: Neck - 2D: ({neck_x}, {neck_y}), 3D: ({x_3d}, {y_3d}, {z_3d}), Min Depth: {min_depth}")
-                            if not np.isnan(z_3d) and (x_3d != 0 or y_3d != 0 or z_3d != 0):
-                                keypoints_3d.append(('Neck', x_3d, y_3d, z_3d))
-
-                            cv2.circle(color_image, (neck_x, neck_y), 5, (255, 0, 0), -1)
-                            cv2.putText(color_image, 'Neck', (neck_x, neck_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-                            cv2.putText(color_image, f"({neck_x}, {neck_y})", (neck_x + 10, neck_y + 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
-
-                    for (start, end) in keypoint_connections:
-                        if labels[start] in keypoints_2d and labels[end] in keypoints_2d:
-                            start_point = keypoints_2d[labels[start]]
-                            end_point = keypoints_2d[labels[end]]
-                            if start_point != (0, 0) and end_point != (0, 0):
-                                cv2.line(color_image, start_point, end_point, (255, 0, 0), 2)
-
-                    for keypoint in keypoints_3d:
-                        label, x_3d, y_3d, z_3d = keypoint
-                        scatter = ax.scatter(x_3d, y_3d, z_3d)
-                        scatter_plots.append(scatter)
-
-                    for (start, end) in keypoint_connections:
-                        start_label = index_to_label.get(start, '')
-                        end_label = index_to_label.get(end, '')
-                        if start_label and end_label:
-                            start_point = next((kp for kp in keypoints_3d if kp[0] == start_label), None)
-                            end_point = next((kp for kp in keypoints_3d if kp[0] == end_label), None)
-                            if start_point and end_point:
-                                line, = ax.plot([start_point[1], end_point[1]], [start_point[2], end_point[2]], [start_point[3], end_point[3]], 'b')
-                                line_plots.append(line)
-
-                    if 'Shoulder.L' in [kp[0] for kp in keypoints_3d] and 'Shoulder.R' in [kp[0] for kp in keypoints_3d] and 'Pelvis' in [kp[0] for kp in keypoints_3d] and 'Neck' in [kp[0] for kp in keypoints_3d]:
-                        shoulder_l = next(kp for kp in keypoints_3d if kp[0] == 'Shoulder.L')
-                        shoulder_r = next(kp for kp in keypoints_3d if kp[0] == 'Shoulder.R')
-                        pelvis = next(kp for kp in keypoints_3d if kp[0] == 'Pelvis')
-                        neck = next(kp for kp in keypoints_3d if kp[0] == 'Neck')
-
-                        p1 = np.array(shoulder_l[1:])
-                        p2 = np.array(shoulder_r[1:])
-                        p3 = np.array(pelvis[1:])
-                        p4 = p3  # The arrow should start at the pelvis point
-                        p5 = np.array(neck[1:])
-
-                        arrow_pelvis_start, arrow_pelvis_end, angleX_camera_body_degrees, orientation_body_degrees = calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length=3)
-
-                        azimuth = calculate_azimuth(arrow_pelvis_end - arrow_pelvis_start, pelvis[1:])
-                        azimuth_buffer.append(azimuth)
-                        if len(azimuth_buffer) > 5:
-                            azimuth_buffer.pop(0)
-
-                        if should_use_kalman(azimuth):
-                            for previous_azimuth in azimuth_buffer:
-                                kf_position.update(previous_azimuth)
-
-                            kf_position.predict()
-                            predicted_azimuth = kf_position.get_state()
-
-                            arrow_direction = np.array([np.cos(np.radians(predicted_azimuth)), np.sin(np.radians(predicted_azimuth)), 0])
-                            arrow_end = pelvis[1:] + arrow_direction * 1.0
-
-                            if azimuth_text:
-                                azimuth_text.remove()
-
-                            azimuth_text = ax.text2D(0.05, 0.95, f"Azimuth: {predicted_azimuth:.2f}° (Kalman)", transform=ax.transAxes, fontsize=14, color='red')
-                            arrow = ax.quiver(pelvis[1], pelvis[2], pelvis[3],
-                                              arrow_end[0] - pelvis[1], arrow_end[1] - pelvis[2], arrow_end[2] - pelvis[3],
-                                              color='g', length=1.0, arrow_length_ratio=0.1)
-                            arrow_plots.append(arrow)
-                        else:
-                            arrow = ax.quiver(arrow_pelvis_start[0], arrow_pelvis_start[1], arrow_pelvis_start[2],
-                                              arrow_pelvis_end[0] - arrow_pelvis_start[0], arrow_pelvis_end[1] - arrow_pelvis_start[1], arrow_pelvis_end[2] - arrow_pelvis_start[2],
-                                              color='g', length=1.0, arrow_length_ratio=0.1)
-                            arrow_plots.append(arrow)
-
-                    if 'Eye.L' in [kp[0] for kp in keypoints_3d] and 'Eye.R' in [kp[0] for kp in keypoints_3d] and 'Neck' in [kp[0] for kp in keypoints_3d]:
-                        eye_l = next(kp for kp in keypoints_3d if kp[0] == 'Eye.L')
-                        eye_r = next(kp for kp in keypoints_3d if kp[0] == 'Eye.R')
-                        neck = next(kp for kp in keypoints_3d if kp[0] == 'Neck')
-
-                        p1 = np.array(eye_l[1:])
-                        p2 = np.array(eye_r[1:])
-                        p3 = np.array(neck[1:])
-                        p4 = p3  # The arrow should start at the neck point
-                        p5 = np.array(neck[1:])
-
-                        arrow_neck_start, arrow_neck_end, angleX_camera_neck_degrees, orientation_head_degrees = calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length=4)
-
-                        azimuth_gaze = calculate_azimuth_gaze(arrow_neck_end - arrow_neck_start, neck[1:])
-                        gaze_azimuth_buffer.append(azimuth_gaze)
-                        if len(gaze_azimuth_buffer) > 5:
-                            gaze_azimuth_buffer.pop(0)
-
-                        if should_use_kalman_gaze(azimuth_gaze):
-                            for previous_azimuth in gaze_azimuth_buffer:
-                                kf_gaze.update(previous_azimuth)
-
-                            kf_gaze.predict()
-                            predicted_gaze_azimuth = kf_gaze.get_state()
-
-                            gaze_direction = np.array([np.cos(np.radians(predicted_gaze_azimuth)), np.sin(np.radians(predicted_gaze_azimuth)), 0])
-                            arrow_end = neck[1:] + gaze_direction * 1.0
-
-                            if gaze_azimuth_text:
-                                gaze_azimuth_text.remove()
-                            
-                            gaze_azimuth_text = ax.text2D(0.05, 0.90, f"Gaze Azimuth: {predicted_gaze_azimuth:.2f}° (Kalman)", transform=ax.transAxes, fontsize=14, color='blue')
-                            arrow = ax.quiver(neck[1], neck[2], neck[3],
-                                              arrow_end[0] - neck[1], arrow_end[1] - neck[2], arrow_end[2] - neck[3],
-                                              color='r', length=1.0, arrow_length_ratio=0.1)
-                            arrow_plots.append(arrow)
-                        else:
-                            arrow = ax.quiver(arrow_neck_start[0], arrow_neck_start[1], arrow_neck_start[2],
-                                              arrow_neck_end[0] - arrow_neck_start[0], arrow_neck_end[1] - arrow_neck_start[1], arrow_neck_end[2] - arrow_neck_start[2],
-                                              color='r', length=0.5, arrow_length_ratio=0.1)
-                            arrow_plots.append(arrow)
-
-                    # Check if the person is turned around
+                    # Publish the "Turned Man" message
                     if 'Shoulder.L' in keypoints_2d and 'Shoulder.R' in keypoints_2d and \
-                        (keypoints_2d['Shoulder.L'][0] > keypoints_2d['Shoulder.R'][0]) and \
-                        (('Ear.L' in keypoints_2d and 'Ear.R' in keypoints_2d) and \
-                        not ('Eye.L' in keypoints_2d and 'Eye.R' in keypoints_2d)):
+                       (keypoints_2d['Shoulder.L'][0] > keypoints_2d['Shoulder.R'][0]) and \
+                       (('Ear.L' in keypoints_2d and 'Ear.R' in keypoints_2d) and \
+                       not ('Eye.L' in keypoints_2d and 'Eye.R' in keypoints_2d)):
 
-                        print(f"Turned Man ID: {person_id}") 
-
-                        turned_man_text = ax.text2D(0.05, 0.85, f"Man Turned ID: {person_id}", transform=ax.transAxes, fontsize=8, color='blue')
-                        turned_man_text_plots.append(turned_man_text)
+                        turned_man_pub.publish(f"Man Turned ID: {person_id}")
 
         plt.draw()
         plt.pause(0.001)
-
         cv2.imshow('YOLO Keypoints', color_image)
-        
+
         if cv2.waitKey(1) == ord('q'):
             break
 
 except Exception as e:
-    print(f"Errore: {e}")
+    print(f"Error: {e}")
 
 finally:
     pipeline.stop()
