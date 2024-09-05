@@ -1,7 +1,7 @@
 <launch>
-    <!-- Lancio dello script FOV_online.py -->
+    <!-- Launch script FOV_online.py -->
     <node name="fov_online_node" pkg="fov_online" type="FOV_online.py" output="screen">
-        <!-- Passaggio di parametri necessari -->
+        <!-- parameters -->
         <param name="camera_config" value="$(find fov_online)/config/camera_params.yaml"/>
     </node>
 </launch>
