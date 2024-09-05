@@ -3,14 +3,14 @@ Enhancing Pepper Robot’s Human-Robot Interaction Capabilities through Advanced
 This repository contains two folders:
 
 1. **3D Printing Files**:
+
     - Custom-designed box to house both the GPU and the battery
-    <div align="center">
-        <img src="https://github.com/polmagri/Enhancing-Pepper-Robot-s-HRI/assets/150929375/7c31d37e-d354-4a25-9d5d-cb75ebc4d5ee" alt="cad_box (1)">
-    </div>
     - RealSense D435i Camera Mount
     <div align="center">
-        <img src="https://github.com/polmagri/Enhancing-Pepper-Robot-s-HRI/assets/150929375/83262071-3eee-4a77-b298-98f52fd20e6f" alt="cad_camera (1)">
+        ![finale (2)](https://github.com/user-attachments/assets/30f2dce7-f90b-40ff-9658-3d65164607c4)
     </div>
+
+
 
 
 2. **Dataset**:
