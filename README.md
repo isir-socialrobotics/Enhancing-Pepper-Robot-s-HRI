@@ -35,6 +35,7 @@ A double-window filter around the keypoints to select the minimum depth value an
 
 
 4. The fov_online folder contains the version of the code implemented in ROS Noetic, ready to be used directly with a connected RealSense camera. It leverages RealSense functions to obtain intrinsic parameters and applies a single-window technique to enhance depth quality without any depth limitations. Like the previous algorithm, it uses a Kalman filter for both gaze and body position in more critical situations (e.g., when the person is in profile relative to the camera, specifically at azimuth angles of 90 and 270 degrees ± 20 degrees) to correct errors caused by the misalignment of keypoints for the back and gaze.
+   
 As a publisher, it includes:
 
 - 3D coordinates of human keypoints
