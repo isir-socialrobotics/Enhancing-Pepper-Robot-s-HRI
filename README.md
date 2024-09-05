@@ -40,4 +40,4 @@ A double-window filter around the keypoints to select the minimum depth value an
 
 You can find the detailed documentation in the following file:
 
-- [PDF Document](https://github.com/polmagri/Enhancing-Pepper-Robot-s-HRI/blob/main/Enhancing_Pepper_Robot_s_HRI.pdf)
+- [PDF Document](https://arxiv.org/pdf/2409.01036)
