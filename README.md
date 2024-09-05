@@ -6,10 +6,7 @@ This repository contains two folders:
 
     - Custom-designed box to house both the GPU and the battery
     - RealSense D435i Camera Mount
-    <div align="center">
-    </div>
-
-        ![finale (2)](https://github.com/user-attachments/assets/30f2dce7-f90b-40ff-9658-3d65164607c4)
+![finale (2)](https://github.com/user-attachments/assets/30f2dce7-f90b-40ff-9658-3d65164607c4)
 
 
 
