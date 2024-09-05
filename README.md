@@ -43,7 +43,6 @@ As a publisher, it includes:
 
 ![image](https://github.com/user-attachments/assets/ca71a4b0-4b1e-4b79-b0f8-a900810652a5)
 
-5. 
 ## Documentation 
 
 You can find the detailed documentation in the following file:
