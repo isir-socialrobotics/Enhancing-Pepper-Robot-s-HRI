@@ -22,8 +22,8 @@ The analyzed scenes include:
 - Walk back and forth with arms crossed
 - Walk back and forth with sudden movements (e.g., dodging an obstacle)
 - Walk back and forth in a zigzag pattern with pronounced head movements
+![dataset_acquisition](https://github.com/user-attachments/assets/106634d9-c82e-41ef-9fc3-b98bea2aab3f)
 
-![dataset_acquisition (1)](https://github.com/polmagri/Enhancing-Pepper-Robot-s-HRI/assets/150929375/c2b1b9d7-705d-4a66-8adf-e0cef52e414a)
 
 3. The `FOV_dataset.py` code, in src folder, written in Python is used to test the algorithm on the dataset. It returns a green arrow to indicate torso orientation, a red arrow with a 120-degree arc for gaze orientation, and a warning message "turned man + ID bounding box" to signal when the robot is outside the human's field of view.
 Due to the loss of quality in the depth images during the dataset saving process, techniques have been implemented to distinguish the background from the foreground:
