@@ -9,9 +9,6 @@ from people_det_3d.utils import calculate_3d, calculate_plane_and_arrow, calcula
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from scipy.spatial.transform import Rotation as R
 
 
 def should_use_kalman(azimuth):
@@ -153,28 +150,6 @@ try:
         # Run the YOLO model on the frames
         persons = model(color_image)
 
-        # Remove previous scatter plots, lines, text labels, arrows, sectors, and circles
-        for scatter in scatter_plots:
-            scatter.remove()
-        scatter_plots.clear()
-        for line in line_plots:
-            line.remove()
-        line_plots.clear()
-        for text in text_labels:
-            text.remove()
-        text_labels.clear()
-        for arrow in arrow_plots:
-            arrow.remove()
-        arrow_plots.clear()
-        for sector in sector_plots:
-            sector.remove()
-        sector_plots.clear()
-        for circle in circle_plots:
-            circle.remove()
-        circle_plots.clear()
-        for turned_man_text in turned_man_text_plots:
-            turned_man_text.remove()
-        turned_man_text_plots.clear()
 
         all_keypoints_3d = []
 
