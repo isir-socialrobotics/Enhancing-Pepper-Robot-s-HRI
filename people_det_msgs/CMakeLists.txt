@@ -8,15 +8,19 @@ project(people_det_msgs)
 find_package(catkin REQUIRED COMPONENTS
 	std_msgs
 	sensor_msgs
+	geometry_msgs
 	message_generation
+	rospy
 )
 
 ## Generate messages in the 'msg' folder
 add_message_files(
    FILES
-   BodyJoint_2D.msg
-   PersonDetection.msg
-   PersonDetectionArray.msg
+    HumanBodyJoints.msg
+    HumanBodyJointsArray.msg
+    HumanDetectionFov.msg
+    HumanDetectionFovArray.msg
+    Joint2D.msg
 )
 
 ## Generate added messages and services with any dependencies listed here
@@ -24,6 +28,7 @@ generate_messages(
   DEPENDENCIES
   std_msgs
   sensor_msgs
+  geometry_msgs
 )
 
 ###################################
@@ -33,4 +38,6 @@ generate_messages(
 catkin_package(CATKIN_DEPENDS 
 					message_runtime 
 					std_msgs
-					sensor_msgs)
+					sensor_msgs
+					rospy
+					)
