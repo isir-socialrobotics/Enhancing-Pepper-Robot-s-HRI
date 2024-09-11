@@ -75,12 +75,9 @@ def calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length):
 
 
 def calculate_azimuth(arrow_direction, pelvis_position):
-    # Calculates the azimuthal angle for the body direction
-
-    camera_to_pelvis = pelvis_position[:2]  # Only the XY component is considered
+    camera_to_pelvis = pelvis_position[:2]  # We only take the XY component
     torso_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
-    azimuth = np.degrees(
-        np.arctan2(torso_direction_xy[1], torso_direction_xy[0]) - np.arctan2(camera_to_pelvis[1], camera_to_pelvis[0]))
+    azimuth = np.degrees(np.arctan2(torso_direction_xy[1], torso_direction_xy[0]) - np.arctan2(camera_to_pelvis[1], camera_to_pelvis[0]))
 
     # Normalize the angle between 0 and 360 degrees
     azimuth = azimuth % 360
@@ -90,13 +87,10 @@ def calculate_azimuth(arrow_direction, pelvis_position):
     return azimuth
 
 
-def calculate_azimuth_gaze(arrow_direction, neck_position):
-    # Calculates the azimuthal angle for the gaze direction
-
-    camera_to_neck = neck_position[:2]  # Only the XY component is considered
+def calculate_azimuth_gaze(arrow_direction, neck_position) -> float:
+    camera_to_neck = neck_position[:2]  # We only consider the XY component
     gaze_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
-    azimuth_gaze = np.degrees(
-        np.arctan2(gaze_direction_xy[1], gaze_direction_xy[0]) - np.arctan2(camera_to_neck[1], camera_to_neck[0]))
+    azimuth_gaze = np.degrees(np.arctan2(gaze_direction_xy[1], gaze_direction_xy[0]) - np.arctan2(camera_to_neck[1], camera_to_neck[0]))
 
     # Normalize the angle between 0 and 360 degrees
     azimuth_gaze = azimuth_gaze % 360

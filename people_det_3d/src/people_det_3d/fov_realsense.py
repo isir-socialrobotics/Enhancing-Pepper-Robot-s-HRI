@@ -4,7 +4,8 @@ import pyrealsense2 as rs
 from ultralytics import YOLO
 import matplotlib
 
-from people_det_3d.utils import calculate_3d
+from people_det_3d.kalman import KalmanFilter1D
+from people_det_3d.utils import calculate_3d, calculate_plane_and_arrow, calculate_azimuth, calculate_azimuth_gaze
 
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -13,95 +14,13 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from scipy.spatial.transform import Rotation as R
 
 
-def calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length):
-    v1 = np.subtract(p2, p1)
-    v2 = np.subtract(p3, p1)
-
-    normal = np.cross(v1, v2)
-    normal = normal / np.linalg.norm(normal)
-
-    normal_xy = np.array([normal[0], normal[1], 0])
-    normal_xy = normal_xy / np.linalg.norm(normal_xy)
-
-    arrow_start = p4
-    arrow_end = p4 + arrow_length * normal_xy
-
-    p5_xy = np.array([p5[0], p5[1], 0])
-    angleX_camera_body = np.arctan2(p5[1], p5[0])
-    angleX_camera_body_degrees = np.degrees(angleX_camera_body)
-
-    def line_intersection(p1, p2, p3, p4):
-        a1, b1 = p1[:2]
-        a2, b2 = p2[:2]
-        a3, b3 = p3[:2]
-        a4, b4 = p4[:2]
-        
-        denominator = (a1 - a2) * (b3 - b4) - (b1 - b2) * (a3 - a4)
-        if denominator == 0:
-            return None
-        
-        intersection_x = ((a1 * b2 - b1 * a2) * (a3 - a4) - (a1 - a2) * (a3 * b4 - b3 * a4)) / denominator
-        intersection_y = ((a1 * b2 - b1 * a2) * (b3 - b4) - (b1 - b2) * (a3 * b4 - b3 * a4)) / denominator
-        return np.array([intersection_x, intersection_y, 0])
-
-    intersection = line_intersection([0, 0, 0], p5, arrow_start, arrow_end)
-    
-    if intersection is not None:
-        orientation = np.arctan2(intersection[1], intersection[0])
-        orientation_degrees = np.degrees(orientation)
-    else:
-        orientation_degrees = None
-
-    return arrow_start, arrow_end, angleX_camera_body_degrees, orientation_degrees
-
-def calculate_azimuth(arrow_direction, pelvis_position):
-    camera_to_pelvis = pelvis_position[:2]  # We only take the XY component
-    torso_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
-    azimuth = np.degrees(np.arctan2(torso_direction_xy[1], torso_direction_xy[0]) - np.arctan2(camera_to_pelvis[1], camera_to_pelvis[0]))
-
-    # Normalize the angle between 0 and 360 degrees
-    azimuth = azimuth % 360
-    if azimuth < 0:
-        azimuth += 360
-
-    return azimuth
-
-def calculate_azimuth_gaze(arrow_direction, neck_position) -> float:
-    camera_to_neck = neck_position[:2]  # We only consider the XY component
-    gaze_direction_xy = arrow_direction[:2]  # Projection onto the XY plane
-    azimuth_gaze = np.degrees(np.arctan2(gaze_direction_xy[1], gaze_direction_xy[0]) - np.arctan2(camera_to_neck[1], camera_to_neck[0]))
-
-    # Normalize the angle between 0 and 360 degrees
-    azimuth_gaze = azimuth_gaze % 360
-    if azimuth_gaze < 0:
-        azimuth_gaze += 360
-
-    return azimuth_gaze
-
 def should_use_kalman(azimuth):
     return (70 <= azimuth <= 110) or (250 <= azimuth <= 290)
 
 def should_use_kalman_gaze(azimuth_gaze):
     return (70 <= azimuth_gaze <= 110) or (250 <= azimuth_gaze <= 290)
 
-class KalmanFilter1D:
-    def __init__(self, initial_state, initial_uncertainty, process_variance, measurement_variance):
-        self.state = initial_state
-        self.uncertainty = initial_uncertainty
-        self.process_variance = process_variance
-        self.measurement_variance = measurement_variance
 
-    def predict(self):
-        self.state = self.state  # In 1D Kalman filter, the state doesn't change during prediction
-        self.uncertainty += self.process_variance
-
-    def update(self, measurement):
-        kalman_gain = self.uncertainty / (self.uncertainty + self.measurement_variance)
-        self.state += kalman_gain * (measurement - self.state)
-        self.uncertainty = (1 - kalman_gain) * self.uncertainty
-
-    def get_state(self):
-        return self.state
 
 # Initialize Kalman filters
 kf_position = KalmanFilter1D(
