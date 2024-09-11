@@ -1,0 +1,7 @@
+<launch>
+    <!-- Launch script FOV_online.py -->
+    <node name="fov_online_node" pkg="people_det_3d" type="FOV_online.py" output="screen">
+        <!-- parameters -->
+        <param name="camera_config" value="$(find people_det_3d)/config/camera.yaml"/>
+    </node>
+</launch>

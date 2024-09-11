@@ -3,39 +3,15 @@ import numpy as np
 import pyrealsense2 as rs
 from ultralytics import YOLO
 import matplotlib
+
+from people_det_3d.utils import calculate_3d
+
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from scipy.spatial.transform import Rotation as R
 
-def calculate_3d(x, y, depth_frame, intrinsics, w, h, window_size=10):
-    if x == 0 and y == 0:
-        return 0.0, 0.0, 0.0, 0.0
-
-    min_depth = float('inf')
-
-    for i in range(-window_size // 2, window_size // 2 + 1):
-        for j in range(-window_size // 2, window_size // 2 + 1):
-            x_pixel = int(x) + i
-            y_pixel = int(y) + j
-
-            if 0 <= x_pixel < w and 0 <= y_pixel < h:
-                depth = depth_frame.get_distance(x_pixel, y_pixel)
-                if depth != 0 and depth < min_depth:
-                    min_depth = depth
-
-    if min_depth == float('inf'):
-        return 0.0, 0.0, 0.0, 0.0
-
-    pixel = [x, y]
-    depth = min_depth
-
-    point = rs.rs2_deproject_pixel_to_point(intrinsics, pixel, depth)
-
-    x_3d, z_3d, y_3d = point
-
-    return x_3d, y_3d, -z_3d, min_depth
 
 def calculate_plane_and_arrow(p1, p2, p3, p4, p5, arrow_length):
     v1 = np.subtract(p2, p1)
