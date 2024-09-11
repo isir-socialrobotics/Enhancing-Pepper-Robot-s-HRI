@@ -89,24 +89,98 @@ class PeopleDetection3D:
             self.ax.scatter(x, y, z)
         plt.draw()
         plt.pause(0.001)
-
+        
     def detect_people_loop(self):
+        # Buffers to store the last azimuth values
+        azimuth_buffer = []
+        gaze_azimuth_buffer = []
+    
         while not rospy.is_shutdown():
+            # Acquire frames from the RealSense camera
             frames = self.pipeline.wait_for_frames()
             aligned_frames = self.align.process(frames)
             aligned_depth_frame = aligned_frames.get_depth_frame()
             color_frame = aligned_frames.get_color_frame()
-
+    
             if not aligned_depth_frame or not color_frame:
                 continue
-
+    
+            # Convert frames to numpy arrays
             depth_image = np.asanyarray(aligned_depth_frame.get_data())
             color_image = np.asanyarray(color_frame.get_data())
+    
+            # Detect people using the YOLO model
             persons = self.yolo_model(color_image)
-
+    
+            all_keypoints_3d = []
+    
+            for results in persons:
+                for result in results:
+                    if hasattr(result, 'keypoints'):
+                        # Extract 2D keypoints and convert them to 3D
+                        kpts = result.keypoints.xy.cpu().numpy()
+                        keypoints_list = kpts.flatten().tolist()
+                        labels = [self.index_to_label.get(i, '') for i in range(len(keypoints_list) // 2)]
+    
+                        keypoints_2d = {}
+                        keypoints_3d = []
+    
+                        # Process keypoints to obtain 3D coordinates
+                        for i, (x, y) in enumerate(zip(keypoints_list[::2], keypoints_list[1::2])):
+                            x_3d, y_3d, z_3d, min_depth = calculate_3d(int(x), int(y), aligned_depth_frame, self.color_intrinsics, depth_image.shape[1], depth_image.shape[0])
+                            if not np.isnan(z_3d) and (x_3d != 0 or y_3d != 0 or z_3d != 0):
+                                keypoints_3d.append((labels[i], x_3d, y_3d, z_3d))
+                                keypoints_2d[labels[i]] = (int(x), int(y))
+    
+                        # Calculate body and gaze orientation
+                        if 'Shoulder.L' in keypoints_2d and 'Shoulder.R' in keypoints_2d and 'Pelvis' in keypoints_2d and 'Neck' in keypoints_2d:
+                            shoulder_l = next(kp for kp in keypoints_3d if kp[0] == 'Shoulder.L')
+                            shoulder_r = next(kp for kp in keypoints_3d if kp[0] == 'Shoulder.R')
+                            pelvis = next(kp for kp in keypoints_3d if kp[0] == 'Pelvis')
+                            neck = next(kp for kp in keypoints_3d if kp[0] == 'Neck')
+    
+                            p1, p2, p3 = np.array(shoulder_l[1:]), np.array(shoulder_r[1:]), np.array(pelvis[1:])
+                            arrow_start, arrow_end, _, _ = calculate_plane_and_arrow(p1, p2, p3, p3, np.array(neck[1:]), arrow_length=3)
+    
+                            azimuth = calculate_azimuth(arrow_end - arrow_start, pelvis[1:])
+                            azimuth_buffer.append(azimuth)
+                            if len(azimuth_buffer) > 5:
+                                azimuth_buffer.pop(0)
+    
+                            if should_use_kalman(azimuth):
+                                for previous_azimuth in azimuth_buffer:
+                                    self.kf_position.update(previous_azimuth)
+                                self.kf_position.predict()
+                                predicted_azimuth = self.kf_position.get_state()
+    
+                            # Calculate and manage gaze azimuth
+                            if 'Eye.L' in keypoints_2d and 'Eye.R' in keypoints_2d:
+                                eye_l = next(kp for kp in keypoints_3d if kp[0] == 'Eye.L')
+                                eye_r = next(kp for kp in keypoints_3d if kp[0] == 'Eye.R')
+    
+                                p4, p5 = np.array(eye_l[1:]), np.array(eye_r[1:])
+                                gaze_arrow_start, gaze_arrow_end, _, _ = calculate_plane_and_arrow(p4, p5, np.array(neck[1:]), np.array(neck[1:]), np.array(neck[1:]), arrow_length=3)
+    
+                                gaze_azimuth = calculate_azimuth_gaze(gaze_arrow_end - gaze_arrow_start, neck[1:])
+                                gaze_azimuth_buffer.append(gaze_azimuth)
+                                if len(gaze_azimuth_buffer) > 5:
+                                    gaze_azimuth_buffer.pop(0)
+    
+                                if should_use_kalman_gaze(gaze_azimuth):
+                                    for previous_azimuth in gaze_azimuth_buffer:
+                                        self.kf_gaze.update(previous_azimuth)
+                                    self.kf_gaze.predict()
+                                    predicted_gaze_azimuth = self.kf_gaze.get_state()
+    
+                        # Visualization and publishing of results
+                        self.visualize(all_keypoints_3d)
+                        self.publish_keypoints(all_keypoints_3d)
+                        self.publish_vectors()
+    
             cv2.imshow('YOLO Keypoints', color_image)
             if cv2.waitKey(1) == ord('q'):
                 break
+
 
 
     def detect(self, color_image):
