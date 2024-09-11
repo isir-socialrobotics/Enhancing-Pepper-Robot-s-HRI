@@ -1,0 +1,22 @@
+std_msgs/Header header
+uint32 person_ID
+
+people_det_msgs/Joint2D nose
+people_det_msgs/Joint2D neck
+people_det_msgs/Joint2D right_shoulder
+people_det_msgs/Joint2D right_elbow
+people_det_msgs/Joint2D right_wrist
+people_det_msgs/Joint2D left_shoulder
+people_det_msgs/Joint2D left_elbow
+people_det_msgs/Joint2D left_wrist
+people_det_msgs/Joint2D right_hip
+people_det_msgs/Joint2D right_knee
+people_det_msgs/Joint2D right_ankle
+people_det_msgs/Joint2D left_hip
+people_det_msgs/Joint2D left_knee
+people_det_msgs/Joint2D left_ankle
+people_det_msgs/Joint2D right_eye
+people_det_msgs/Joint2D left_eye
+people_det_msgs/Joint2D right_ear
+people_det_msgs/Joint2D left_ear
+people_det_msgs/Joint2D chest
