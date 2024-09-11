@@ -3,20 +3,21 @@
 import cv2
 import numpy as np
 import pyrealsense2 as rs
-from std_msgs.msg import String
 from ultralytics import YOLO
+
 import rospy
+from std_msgs.msg import String
 from geometry_msgs.msg import Pose, PoseArray, Vector3
+
 from people_det_3d.kalman import KalmanFilter1D
 from people_det_3d.utils import calculate_3d
 
 
 class PeopleDetection3D:
     def __init__(self, enable_visualization=True):
-        self.enable_visualization = enable_visualization
-
         # Initialize ROS
         rospy.init_node('people_detection_3d', anonymous=True)
+
         self.keypoints_pub = rospy.Publisher('/keypoints', PoseArray, queue_size=10)
         self.arrow_body_pub = rospy.Publisher('/arrow_body_vector', Vector3, queue_size=10)
         self.arrow_gaze_pub = rospy.Publisher('/arrow_gaze_vector', Vector3, queue_size=10)
@@ -26,9 +27,16 @@ class PeopleDetection3D:
         self.kf_position = KalmanFilter1D(0.0, 1.0, 0.1, 1.0)
         self.kf_gaze = KalmanFilter1D(0.0, 1.0, 0.1, 1.0)
 
-        self.pipeline, self.config, self.align, self.color_intrinsics = self.initialize_realsense()
+
+        self.person_id_counter = -1
         self.yolo_model = YOLO('yolov8n-pose')
 
+        # subscribe to RealSense camera
+
+        # Realsense camera
+        # self.pipeline, self.config, self.align, self.color_intrinsics = self.initialize_realsense()
+
+        self.enable_visualization = enable_visualization
         if self.enable_visualization:
             import matplotlib
             matplotlib.use('TkAgg')
@@ -82,8 +90,7 @@ class PeopleDetection3D:
         plt.draw()
         plt.pause(0.001)
 
-    def detect_people(self):
-        person_id_counter = 0
+    def detect_people_loop(self):
         while not rospy.is_shutdown():
             frames = self.pipeline.wait_for_frames()
             aligned_frames = self.align.process(frames)
@@ -97,25 +104,30 @@ class PeopleDetection3D:
             color_image = np.asanyarray(color_frame.get_data())
             persons = self.yolo_model(color_image)
 
-            all_keypoints_3d = []
-            for results in persons:
-                for result in results:
-                    person_id = person_id_counter
-                    person_id_counter += 1
-
-                    if hasattr(result, 'keypoints'):
-                        keypoints_3d = self.process_keypoints(result, aligned_depth_frame, depth_image)
-                        all_keypoints_3d.extend(keypoints_3d)
-
-                        self.publish_keypoints(keypoints_3d)
-                        self.publish_vectors()
-
-            if self.enable_visualization:
-                self.visualize(all_keypoints_3d)
-
             cv2.imshow('YOLO Keypoints', color_image)
             if cv2.waitKey(1) == ord('q'):
                 break
+
+
+    def detect(self, color_image):
+        persons = self.yolo_model(color_image)
+
+        all_keypoints_3d = []
+        for results in persons:
+            for result in results:
+                self.person_id_counter += 1
+                person_id = self.person_id_counter
+
+                if hasattr(result, 'keypoints'):
+                    keypoints_3d = self.process_keypoints(result, aligned_depth_frame, depth_image)
+                    all_keypoints_3d.extend(keypoints_3d)
+
+                    self.publish_keypoints(keypoints_3d)
+                    self.publish_vectors()
+
+        if self.enable_visualization:
+            self.visualize(all_keypoints_3d)
+
 
     def process_keypoints(self, result, aligned_depth_frame, depth_image):
         kpts = result.keypoints.xy.cpu().numpy()
@@ -149,7 +161,7 @@ class PeopleDetection3D:
 
     def run(self):
         try:
-            self.detect_people()
+            self.detect_people_loop()
         finally:
             self.pipeline.stop()
             cv2.destroyAllWindows()
