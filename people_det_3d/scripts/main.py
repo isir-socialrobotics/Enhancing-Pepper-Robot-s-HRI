@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
 import cv2
+import message_filters
 import numpy as np
 import pyrealsense2 as rs
+from sensor_msgs.msg import Image, CameraInfo
 from ultralytics import YOLO
 
 import rospy
@@ -27,6 +29,19 @@ class PeopleDetection3D:
         self.kf_position = KalmanFilter1D(0.0, 1.0, 0.1, 1.0)
         self.kf_gaze = KalmanFilter1D(0.0, 1.0, 0.1, 1.0)
 
+        # subscribe to RealSense camera
+        # image_sub = rospy.Subscriber('/camera/color/image_raw', Image, self.detect)
+        # depth_sub = rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.detect)
+        # depth_info_sub = rospy.Subscriber('/camera/depth/camera_info', CameraInfo, self.detect)
+
+        image_sub = message_filters.Subscriber('/camera/color/image_raw', Image)
+        depth_sub = message_filters.Subscriber('/camera/depth/image_rect_raw', Image)
+        depth_info_sub = message_filters.Subscriber('/camera/depth/camera_info', CameraInfo)
+
+        # create a SyncSubscriber object
+        sync_sub = message_filters.ApproximateTimeSynchronizer([image_sub, depth_sub, depth_info_sub], 10, 0.1)
+        sync_sub.registerCallback(self.detect)
+
 
         self.person_id_counter = -1
         self.yolo_model = YOLO('yolov8n-pose')
@@ -42,16 +57,16 @@ class PeopleDetection3D:
             matplotlib.use('TkAgg')
             self.initialize_visualization()
 
-    def initialize_realsense(self):
-        pipeline = rs.pipeline()
-        config = rs.config()
-        config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
-        config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
-        profile = pipeline.start(config)
-        align_to = rs.stream.color
-        align = rs.align(align_to)
-        color_intrinsics = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
-        return pipeline, config, align, color_intrinsics
+    # def initialize_realsense(self):
+    #     pipeline = rs.pipeline()
+    #     config = rs.config()
+    #     config.enable_stream(rs.stream.depth, 1280, 720, rs.format.z16, 30)
+    #     config.enable_stream(rs.stream.color, 1280, 720, rs.format.bgr8, 30)
+    #     profile = pipeline.start(config)
+    #     align_to = rs.stream.color
+    #     align = rs.align(align_to)
+    #     color_intrinsics = profile.get_stream(rs.stream.color).as_video_stream_profile().get_intrinsics()
+    #     return pipeline, config, align, color_intrinsics
 
     def initialize_visualization(self):
         import matplotlib.pyplot as plt
@@ -97,8 +112,8 @@ class PeopleDetection3D:
     
         while not rospy.is_shutdown():
             # Acquire frames from the RealSense camera
-            frames = self.pipeline.wait_for_frames()
-            aligned_frames = self.align.process(frames)
+            # frames = self.pipeline.wait_for_frames()
+            # aligned_frames = self.align.process(frames)
             aligned_depth_frame = aligned_frames.get_depth_frame()
             color_frame = aligned_frames.get_color_frame()
     
@@ -181,9 +196,9 @@ class PeopleDetection3D:
             if cv2.waitKey(1) == ord('q'):
                 break
 
+    def detect(self, color_image, depth_image, depth_cam_info):
+    # def detect(self, color_image):
 
-
-    def detect(self, color_image):
         persons = self.yolo_model(color_image)
 
         all_keypoints_3d = []
