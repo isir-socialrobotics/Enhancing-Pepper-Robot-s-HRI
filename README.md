@@ -25,7 +25,7 @@ The analyzed scenes include:
 ![dataset_acquisition](https://github.com/user-attachments/assets/106634d9-c82e-41ef-9fc3-b98bea2aab3f)
 
 
-3. The `FOV_dataset.py` code, in src folder, written in Python is used to test the algorithm on the dataset. It returns a green arrow to indicate torso orientation, a red arrow with a 120-degree arc for gaze orientation, and a warning message "turned man + ID bounding box" to signal when the robot is outside the human's field of view.
+3. A Python code has been created to test the algorithm on the dataset. It returns a green arrow to indicate torso orientation, a red arrow with a 120-degree arc for gaze orientation, and a warning message "turned man + ID bounding box" to signal when the robot is outside the human's field of view.
 Due to the loss of quality in the depth images during the dataset saving process, techniques have been implemented to distinguish the background from the foreground:
 
 A double-window filter around the keypoints to select the minimum depth value and a threshold for the exclusion of depth values greater than 4 meters.
@@ -34,7 +34,7 @@ A double-window filter around the keypoints to select the minimum depth value an
 
 
 
-4. The fov_online folder contains the version of the code implemented in ROS Noetic, ready to be used directly with a connected RealSense camera. It leverages RealSense functions to obtain intrinsic parameters and applies a single-window technique to enhance depth quality without any depth limitations. Like the previous algorithm, it uses a Kalman filter for both gaze and body position in more critical situations (e.g., when the person is in profile relative to the camera, specifically at azimuth angles of 90 and 270 degrees ± 20 degrees) to correct errors caused by the misalignment of keypoints for the back and gaze.
+4. The people_det_3d folder contains the version of the code implemented in ROS Noetic, ready to be used directly with a connected RealSense camera. It leverages RealSense functions to obtain intrinsic parameters and applies a single-window technique to enhance depth quality without any depth limitations. Like the previous algorithm, it uses a Kalman filter for both gaze and body position in more critical situations (e.g., when the person is in profile relative to the camera, specifically at azimuth angles of 90 and 270 degrees ± 20 degrees) to correct errors caused by the misalignment of keypoints for the back and gaze.
    
 As a publisher, it includes:
 
